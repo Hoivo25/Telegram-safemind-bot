@@ -1,3 +1,4 @@
+
 from telegram import Update
 from telegram.ext import ContextTypes
 from utils import ESCROWS
@@ -33,7 +34,5 @@ async def handle_join_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     context.user_data["awaiting_join"] = False
 
-
 def register_handlers(app):
-    # Optional: leave empty or remove if routing via router.py
     pass

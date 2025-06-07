@@ -1,7 +1,7 @@
+
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes, CommandHandler, CallbackQueryHandler
 
-# Function to show the main menu
 async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
         [InlineKeyboardButton("➕ Create Escrow", callback_data="create_escrow")],
@@ -16,7 +16,6 @@ async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif update.callback_query:
         await update.callback_query.edit_message_text("Welcome! Choose an option:", reply_markup=reply_markup)
 
-# Register command and callback handlers
 def register_handlers(app):
     app.add_handler(CommandHandler("start", show_main_menu))
-    app.add_handler(CallbackQueryHandler(show_main_menu, pattern="^menu$"))
+    app.add_handler(CallbackQueryHandler(show_main_menu, pattern="back_to_menu"))

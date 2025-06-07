@@ -1,8 +1,8 @@
+
 from telegram.ext import MessageHandler, filters
 from .initiate_trade import handle_escrow_details
 from .join import handle_join_input
 
-# This is the combined router that dispatches messages based on the flow
 text_router = MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text_message)
 
 async def handle_text_message(update, context):
@@ -16,4 +16,4 @@ async def handle_text_message(update, context):
 
     else:
         print("⚠️ User sent message but bot is not awaiting any input.")
-        await update.message.reply_text("❌ Please start an action from the menu (e.g. Create or Join Escrow).")
+        await update.message.reply_text("❌ Please start an action from the menu (e.g. Create or Join Escrow)")
