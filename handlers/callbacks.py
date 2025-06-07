@@ -13,7 +13,15 @@ async def callback_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
     print(f"🔁 Callback data received: {data}")
 
     if data == "create_escrow":
-        await query.edit_message_text("🔐 Please send the amount and item details to create the escrow.")
+        instructions = (
+            "📝 *Create Escrow*\n\n"
+            "Please send the escrow details in the following format:\n"
+            "`amount | item name | @buyer_username`\n\n"
+            "Example:\n"
+            "`100 | iPhone 12 | @john_doe`\n\n"
+            "Once submitted, the buyer can join the trade."
+        )
+        await query.edit_message_text(instructions, parse_mode="Markdown")
         context.user_data["awaiting_escrow_details"] = True
         context.user_data["awaiting_join"] = False
 

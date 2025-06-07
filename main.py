@@ -1,6 +1,7 @@
 import asyncio
 import nest_asyncio
 from telegram.ext import Application
+from telegram.request import HTTPXRequest
 from config import BOT_TOKEN
 from handlers import register_all_handlers
 
@@ -8,11 +9,28 @@ from handlers import register_all_handlers
 nest_asyncio.apply()
 
 async def main():
-    application = Application.builder().token(BOT_TOKEN).build()
+    # Configure request with longer timeout
+    request = HTTPXRequest(
+        connection_pool_size=8,
+        read_timeout=30,
+        write_timeout=30,
+        connect_timeout=30,
+        pool_timeout=30
+    )
+    
+    application = Application.builder().token(BOT_TOKEN).request(request).build()
     register_all_handlers(application)
 
     print("✅ Bot is running...")
-    await application.run_polling()
+    try:
+        await application.run_polling(drop_pending_updates=True)
+    except Exception as e:
+        print(f"❌ Bot error: {e}")
 
-# Replit needs this style
-asyncio.get_event_loop().run_until_complete(main())
+if __name__ == "__main__":
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("🛑 Bot stopped by user")
+    except Exception as e:
+        print(f"❌ Fatal error: {e}")

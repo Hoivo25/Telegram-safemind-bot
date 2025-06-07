@@ -44,4 +44,4 @@ async def handle_join_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["awaiting_join"] = False
 
 def register_handlers(app):
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_join_input))
+    pass  # Handler logic moved to router.py
