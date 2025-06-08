@@ -14,3 +14,15 @@ USER_STATS = {
     #     "reputation": 5.0
     # }
 }
+
+# Payment sessions tracking
+PAYMENT_SESSIONS = {
+    # Example structure:
+    # "payment_id": {
+    #     "escrow_id": "seller_username",
+    #     "user_id": 123456789,
+    #     "amount": 100.0,
+    #     "currency": "btc",
+    #     "status": "waiting"
+    # }
+}

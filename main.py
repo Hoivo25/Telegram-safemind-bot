@@ -1,14 +1,21 @@
 import asyncio
 import nest_asyncio
+import threading
 from telegram.ext import Application
 from telegram.request import HTTPXRequest
 from config import BOT_TOKEN
 from handlers import register_all_handlers
+from webhook_server import run_webhook_server
 
 # Allow nested async loops (required in Replit)
 nest_asyncio.apply()
 
 async def main():
+    # Start webhook server in background thread
+    webhook_thread = threading.Thread(target=run_webhook_server, daemon=True)
+    webhook_thread.start()
+    print("🌐 Webhook server started on port 5000")
+    
     # Configure request with longer timeout
     request = HTTPXRequest(
         connection_pool_size=8,
