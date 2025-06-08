@@ -49,6 +49,122 @@ async def callback_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
         from .start import show_main_menu
         await show_main_menu(update, context)
 
+async def show_active_escrows(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Show all active escrows"""
+    if not ESCROWS:
+        keyboard = [[InlineKeyboardButton("🔙 Back to Menu", callback_data="menu")]]
+        await update.callback_query.edit_message_text(
+            "📭 No active escrows found.",
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+        return
+
+    message = "🔍 *Active Escrows:*\n\n"
+    for seller, escrow in ESCROWS.items():
+        status_emoji = "🟢" if escrow["status"] == "active" else "🟡"
+        message += f"{status_emoji} **Seller:** @{seller}\n"
+        message += f"💰 **Amount:** {escrow['amount']}\n"
+        message += f"📦 **Item:** {escrow['item']}\n"
+        if escrow.get("buyer"):
+            message += f"👤 **Buyer:** @{escrow['buyer']}\n"
+        message += f"📊 **Status:** {escrow['status'].title()}\n\n"
+
+    keyboard = [[InlineKeyboardButton("🔙 Back to Menu", callback_data="menu")]]
+    await update.callback_query.edit_message_text(
+        message,
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode="Markdown"
+    )
+
+async def show_user_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Show user's trade history"""
+    username = update.effective_user.username
+    
+    if username not in USER_STATS:
+        USER_STATS[username] = {
+            "trades_completed": 0,
+            "total_volume": 0,
+            "rating": 5.0
+        }
+
+    stats = USER_STATS[username]
+    
+    message = f"📊 *Your Trading Stats*\n\n"
+    message += f"👤 **Username:** @{username}\n"
+    message += f"✅ **Completed Trades:** {stats['trades_completed']}\n"
+    message += f"💰 **Total Volume:** ${stats['total_volume']}\n"
+    message += f"⭐ **Rating:** {stats['rating']}/5.0\n\n"
+    
+    # Show user's active escrows
+    user_escrows = []
+    for seller, escrow in ESCROWS.items():
+        if seller == username or escrow.get("buyer") == username:
+            user_escrows.append((seller, escrow))
+    
+    if user_escrows:
+        message += "*Your Active Escrows:*\n"
+        for seller, escrow in user_escrows:
+            role = "Seller" if seller == username else "Buyer"
+            message += f"• {role}: {escrow['item']} - ${escrow['amount']}\n"
+
+    keyboard = [[InlineKeyboardButton("🔙 Back to Menu", callback_data="menu")]]
+    await update.callback_query.edit_message_text(
+        message,
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode="Markdown"
+    )
+
+async def show_user_profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Show user profile"""
+    username = update.effective_user.username
+    first_name = update.effective_user.first_name or "Unknown"
+    
+    message = f"👤 *User Profile*\n\n"
+    message += f"**Name:** {first_name}\n"
+    message += f"**Username:** @{username}\n"
+    message += f"**User ID:** {update.effective_user.id}\n"
+
+    keyboard = [[InlineKeyboardButton("🔙 Back to Menu", callback_data="menu")]]
+    await update.callback_query.edit_message_text(
+        message,
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode="Markdown"
+    )
+
+async def show_rules(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Show escrow rules"""
+    message = f"📜 *Escrow Bot Rules*\n\n"
+    message += f"🔐 **How it works:**\n"
+    message += f"• Seller creates escrow\n"
+    message += f"• Buyer joins and pays\n"
+    message += f"• Funds held securely\n"
+    message += f"• Released when both agree\n\n"
+    message += f"💰 **Fees:**\n"
+    message += f"• Under $100: ${FLAT_FEE} flat fee\n"
+    message += f"• Over $100: {PERCENTAGE_FEE*100}% fee\n\n"
+    message += f"⚖️ **Disputes:**\n"
+    message += f"• Contact {SUPPORT_USERNAME}\n"
+    message += f"• Provide evidence\n"
+    message += f"• Admin decides outcome\n\n"
+    message += f"📞 **Support:** {SUPPORT_USERNAME}"
+
+    keyboard = [[InlineKeyboardButton("🔙 Back to Menu", callback_data="menu")]]
+    await update.callback_query.edit_message_text(
+        message,
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode="Markdown"
+    )pdate, context)
+
+    elif data == "profile":
+        await show_user_profile(update, context)
+
+    elif data == "rules":
+        await show_rules(update, context)
+
+    elif data == "menu":
+        from .start import show_main_menu
+        await show_main_menu(update, context)
+
     elif data.startswith("complete_"):
         escrow_id = data.replace("complete_", "")
         await complete_trade(update, context, escrow_id)

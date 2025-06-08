@@ -1,5 +1,6 @@
 
-from telegram.ext import MessageHandler, filters
+from telegram import Update
+from telegram.ext import MessageHandler, filters, ContextTypes
 from .initiate_trade import handle_escrow_details
 from .join import handle_join_input
 
