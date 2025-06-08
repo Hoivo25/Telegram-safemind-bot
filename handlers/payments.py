@@ -25,7 +25,7 @@ class NOWPayments:
                     return data.get("currencies", [])
                 return []
     
-    async def create_payment(self, amount_usd, currency, order_id, description):
+    async def create_payment(self, amount_usd, currency, order_id, description, bot_username=None):
         """Create a payment invoice"""
         async with aiohttp.ClientSession() as session:
             headers = {
@@ -33,15 +33,19 @@ class NOWPayments:
                 "Content-Type": "application/json"
             }
             
+            # Use a generic webhook URL since bot username might not be available
+            webhook_url = "https://your-repl-name.replit.dev/webhook/nowpayments"
+            success_url = f"https://t.me/{bot_username}" if bot_username else "https://t.me"
+            
             payload = {
                 "price_amount": float(amount_usd),
                 "price_currency": "usd",
                 "pay_currency": currency,
                 "order_id": order_id,
                 "order_description": description,
-                "ipn_callback_url": f"https://{context.application.bot.username}.replit.dev/webhook/nowpayments",
-                "success_url": f"https://t.me/{context.application.bot.username}",
-                "cancel_url": f"https://t.me/{context.application.bot.username}"
+                "ipn_callback_url": webhook_url,
+                "success_url": success_url,
+                "cancel_url": success_url
             }
             
             async with session.post(f"{self.base_url}/payment", 
@@ -137,11 +141,13 @@ async def process_crypto_selection(update: Update, context: ContextTypes.DEFAULT
     amount = float(escrow["amount"].replace("$", ""))
     
     # Create payment with NOWPayments
+    bot_username = context.bot.username
     payment_data = await nowpayments.create_payment(
         amount_usd=amount,
         currency=currency,
         order_id=f"escrow_{escrow_id}_{update.effective_user.id}",
-        description=f"Escrow payment for {escrow['item']}"
+        description=f"Escrow payment for {escrow['item']}",
+        bot_username=bot_username
     )
     
     if not payment_data:
