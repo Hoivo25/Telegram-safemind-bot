@@ -1,29 +1,47 @@
-import os
 import nest_asyncio
+import asyncio
+import logging
+import os
 from telegram.ext import Application
-from handlers import register_all_handlers  # Your custom handler setup
+from quart import Quart, request
+
+from config import BOT_TOKEN, WEBHOOK_URL, PORT
+from handlers import register_all_handlers
 
 nest_asyncio.apply()
 
-# Get the bot token and Render URL from environment variables
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-APP_URL = os.getenv("RENDER_EXTERNAL_URL")  # Automatically set by Render
-PORT = int(os.environ.get('PORT', 5000))
-
-# Ensure required environment variables exist
-if not BOT_TOKEN or not APP_URL:
-    raise Exception("Missing BOT_TOKEN or RENDER_EXTERNAL_URL environment variables")
-
-# Initialize the Telegram bot application
+# Initialize bot application
 application = Application.builder().token(BOT_TOKEN).build()
-
-# Register all command and callback handlers
 register_all_handlers(application)
 
-# Start webhook server
-application.run_webhook(
-    listen="0.0.0.0",
-    port=PORT,
-    webhook_url=f"{APP_URL}/webhook/{BOT_TOKEN}",
-    allowed_updates=application.resolve_used_update_types()
-)
+# Webhook server using Quart
+webhook_app = Quart(__name__)
+
+@webhook_app.route("/webhook", methods=["POST"])
+async def telegram_webhook():
+    """Handle incoming Telegram updates from webhook"""
+    data = await request.get_data()
+    await application.update_queue.put(data)
+    return "OK"
+
+async def start():
+    # Set webhook
+    await application.bot.set_webhook(f"{WEBHOOK_URL}/webhook")
+
+    # Run both Telegram and Quart app
+    await asyncio.gather(
+        application.run_webhook(
+            listen="0.0.0.0",
+            port=PORT,
+            url_path="webhook",
+            webhook_url=f"{WEBHOOK_URL}/webhook",
+        ),
+        webhook_app.run_task(host="0.0.0.0", port=PORT),
+    )
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+    try:
+        asyncio.run(start())
+    except (KeyboardInterrupt, SystemExit):
+        print("Bot stopped.")
