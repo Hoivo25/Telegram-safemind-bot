@@ -23,7 +23,7 @@ def verify_ipn_signature(payload, signature):
     ).hexdigest()
     return hmac.compare_digest(expected_signature, signature)
 
-@app.route('/webhook/nowpayments', methods=['POSTT'])
+@app.route('/webhook/nowpayments', methods=['POST'])
 def nowpayments_webhook():
     """Handle NOWPayments IPN callbacks"""
     try:
@@ -73,31 +73,7 @@ def run_webhook_server():
     try:
         app.run(host='0.0.0.0', port=5000, debug=False)
     except Exception as e:
-        print(f"❌ Webhook server error: {e}")'}), 500
-
-def verify_ipn_signature(payload, signature):
-    """Verify NOWPayments IPN signature"""
-    import hmac
-    import hashlib
-    
-    expected_sig = hmac.new(
-        NOWPAYMENTS_IPN_SECRET.encode(),
-        payload.encode(),
-        hashlib.sha512
-    ).hexdigest()
-    
-    return hmac.compare_digest(signature, expected_sig)
-
-def run_webhook_server():
-    """Run webhook server in a separate thread"""
-    if Flask is None:
-        print("⚠️ Flask not available. Webhook server disabled.")
-        return
-    
-    try:
-        app.run(host='0.0.0.0', port=5000, debug=False)
-    except Exception as e:
-        print(f"⚠️ Webhook server error: {e}")
+        print(f"❌ Webhook server error: {e}")
 
 if __name__ == '__main__':
     run_webhook_server()
