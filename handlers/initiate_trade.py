@@ -65,3 +65,4 @@ async def handle_escrow_details(update: Update, context: ContextTypes.DEFAULT_TY
 # Register these handlers
 def register_handlers(app):
     app.add_handler(CallbackQueryHandler(create_escrow_handler, pattern="^create_escrow$"))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_escrow_details))

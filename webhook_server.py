@@ -7,12 +7,23 @@ except ImportError:
 
 import json
 import threading
+import hashlib
+import hmac
 from config import NOWPAYMENTS_IPN_SECRET
 from utils import PAYMENT_SESSIONS, ESCROWS
 
 app = Flask(__name__)
 
-@app.route('/webhook/nowpayments', methods=['POST'])
+def verify_ipn_signature(payload, signature):
+    """Verify IPN callback signature"""
+    expected_signature = hmac.new(
+        NOWPAYMENTS_IPN_SECRET.encode('utf-8'),
+        payload.encode('utf-8'),
+        hashlib.sha512
+    ).hexdigest()
+    return hmac.compare_digest(expected_signature, signature)
+
+@app.route('/webhook/nowpayments', methods=['POSTT'])
 def nowpayments_webhook():
     """Handle NOWPayments IPN callbacks"""
     try:
@@ -52,6 +63,17 @@ def nowpayments_webhook():
     except Exception as e:
         print(f"Webhook error: {e}")
         return jsonify({'error': 'Internal error'}), 500
+
+def run_webhook_server():
+    """Run Flask webhook server"""
+    if Flask is None:
+        print("⚠️ Flask not available. Install with: pip install flask")
+        return
+    
+    try:
+        app.run(host='0.0.0.0', port=5000, debug=False)
+    except Exception as e:
+        print(f"❌ Webhook server error: {e}")'}), 500
 
 def verify_ipn_signature(payload, signature):
     """Verify NOWPayments IPN signature"""

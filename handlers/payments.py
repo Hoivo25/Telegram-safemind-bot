@@ -39,9 +39,9 @@ class NOWPayments:
                 "pay_currency": currency,
                 "order_id": order_id,
                 "order_description": description,
-                "ipn_callback_url": "https://your-repl-url.replit.dev/webhook/nowpayments",
-                "success_url": "https://t.me/your_bot_username",
-                "cancel_url": "https://t.me/your_bot_username"
+                "ipn_callback_url": f"https://{context.application.bot.username}.replit.dev/webhook/nowpayments",
+                "success_url": f"https://t.me/{context.application.bot.username}",
+                "cancel_url": f"https://t.me/{context.application.bot.username}"
             }
             
             async with session.post(f"{self.base_url}/payment", 
