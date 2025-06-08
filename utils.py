@@ -1,5 +1,7 @@
 # utils.py
 
+import time
+
 # This dictionary stores all ongoing escrows.
 # You can replace this with a database later.
 ESCROWS = {}
@@ -26,3 +28,16 @@ PAYMENT_SESSIONS = {
     #     "status": "waiting"
     # }
 }
+
+# Wallet addresses for users
+USER_WALLETS = {
+    # Example structure:
+    # "username": {
+    #     "usdt": "TXxxxxxxxxxxxxx",
+    #     "btc": "1xxxxxxxxxxxxxxx",
+    #     "eth": "0xxxxxxxxxxxxxxxxxxx"
+    # }
+}
+
+# Auto-release timing (in seconds) - 72 hours default
+AUTO_RELEASE_TIME = 72 * 60 * 60  # 72 hours

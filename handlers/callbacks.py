@@ -1,4 +1,3 @@
-
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes, CallbackQueryHandler
 from utils import ESCROWS, USER_STATS
@@ -45,6 +44,9 @@ async def callback_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif data == "rules":
         await show_rules(update, context)
+    
+    elif data == "wallet_menu":
+        await show_wallet_menu(update, context)
 
     elif data == "menu":
         from .start import show_main_menu
@@ -61,15 +63,15 @@ async def callback_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data.startswith("cancel_"):
         escrow_id = data.replace("cancel_", "")
         await cancel_escrow(update, context, escrow_id)
-    
+
     elif data.startswith("share_link_"):
         escrow_id = data.replace("share_link_", "")
         await share_join_link(update, context, escrow_id)
-    
+
     elif data.startswith("confirm_join_"):
         escrow_id = data.replace("confirm_join_", "")
         await confirm_join_escrow(update, context, escrow_id)
-    
+
     elif data.startswith("confirm_cancel_"):
         escrow_id = data.replace("confirm_cancel_", "")
         await confirm_cancel_escrow(update, context, escrow_id)
@@ -81,12 +83,22 @@ async def callback_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data.startswith("pay_crypto_"):
         escrow_id = data.replace("pay_crypto_", "")
         await initiate_payment(update, context, escrow_id)
+    
+    elif data.startswith("refund_"):
+        escrow_id = data.replace("refund_", "")
+        await refund_escrow(update, context, escrow_id)
+    
+    elif data == "set_seller_wallet":
+        await set_seller_wallet(update, context)
+
+    elif data == "set_buyer_refund_wallet":
+        await set_buyer_refund_wallet(update, context)
 
     else:
         await query.edit_message_text("❌ Unknown option selected.")
 
 async def show_escrow_details(update: Update, context: ContextTypes.DEFAULT_TYPE, escrow_id: str):
-    """Show detailed escrow information"""
+    """Show detailed view of an escrow"""
     if escrow_id not in ESCROWS:
         await update.callback_query.edit_message_text("❌ Escrow not found.")
         return
@@ -94,33 +106,64 @@ async def show_escrow_details(update: Update, context: ContextTypes.DEFAULT_TYPE
     escrow = ESCROWS[escrow_id]
     username = update.effective_user.username
 
+    # Calculate fees
+    amount = float(escrow["amount"].replace("$", ""))
+    if amount < 100:
+        fee = FLAT_FEE
+        total = amount + fee
+    else:
+        fee = amount * PERCENTAGE_FEE
+        total = amount + fee
+
     message = f"🔐 *Escrow Details*\n\n"
-    message += f"🆔 ID: {escrow_id}\n"
+    message += f"🆔 ID: `{escrow_id}`\n"
     message += f"👤 Seller: @{escrow_id}\n"
-    message += f"👤 Buyer: {escrow.get('buyer', 'Waiting...')}\n"
     message += f"💰 Amount: {escrow['amount']}\n"
     message += f"📦 Item: {escrow['item']}\n"
+    message += f"👤 Buyer: {escrow.get('buyer', 'Waiting...')}\n"
     message += f"📊 Status: {escrow['status'].title()}\n"
-    message += f"💳 Payment: {escrow.get('payment_status', 'Not paid')}\n"
+    message += f"💳 Payment: {escrow.get('payment_status', 'unpaid').title()}\n\n"
+    message += f"💵 Total with fees: ${total:.2f} (${fee:.2f} fee)\n\n"
+
+    # Add auto-release info for active escrows
+    if escrow["status"] == "active" and escrow.get("funded_at"):
+        import time
+        from utils import AUTO_RELEASE_TIME
+        time_left = AUTO_RELEASE_TIME - (time.time() - escrow["funded_at"])
+        if time_left > 0:
+            hours_left = int(time_left // 3600)
+            message += f"⏰ Auto-release in: {hours_left} hours\n\n"
+
+    if escrow["status"] == "pending":
+        message += "⏳ Waiting for buyer to join and make payment."
+    elif escrow["status"] == "active":
+        message += "✅ Escrow is active. Awaiting delivery confirmation."
+    elif escrow["status"] == "completed":
+        message += "✅ Trade completed successfully!"
+    elif escrow["status"] == "auto_completed":
+        message += "⏰ Trade auto-completed after 72 hours!"
+    elif escrow["status"] == "refunded":
+        message += "💸 Trade was refunded."
+    elif escrow["status"] == "cancelled":
+        message += "❌ Trade was cancelled."
 
     keyboard = []
-    
-    # Different buttons based on user role and status
-    if username == escrow_id:  # Seller
-        if escrow["status"] == "pending":
-            keyboard.append([InlineKeyboardButton("❌ Cancel", callback_data=f"cancel_{escrow_id}")])
-        elif escrow["status"] == "active":
-            keyboard.append([InlineKeyboardButton("✅ Mark Complete", callback_data=f"complete_{escrow_id}")])
-            keyboard.append([InlineKeyboardButton("⚠️ Dispute", callback_data=f"dispute_{escrow_id}")])
-    
-    elif username == escrow.get("buyer"):  # Buyer
-        if escrow["status"] == "active":
-            if escrow.get("payment_status") != "paid":
-                keyboard.append([InlineKeyboardButton("💰 Pay with Crypto", callback_data=f"pay_crypto_{escrow_id}")])
-            keyboard.append([InlineKeyboardButton("✅ Confirm Receipt", callback_data=f"complete_{escrow_id}")])
-            keyboard.append([InlineKeyboardButton("⚠️ Dispute", callback_data=f"dispute_{escrow_id}")])
 
-    keyboard.append([InlineKeyboardButton("🔙 Back", callback_data="my_trades")])
+    # Show different buttons based on user role and escrow status
+    if escrow["status"] == "pending":
+        if username == escrow_id:  # Seller
+            keyboard.append([InlineKeyboardButton("❌ Cancel Escrow", callback_data=f"cancel_{escrow_id}")])
+        elif username == escrow.get("buyer"):  # Buyer
+            if escrow.get("payment_status") == "unpaid":
+                keyboard.append([InlineKeyboardButton("💳 Make Payment", callback_data=f"pay_crypto_{escrow_id}")])
+
+    elif escrow["status"] == "active":
+        if username == escrow.get("buyer"):  # Buyer
+            keyboard.append([InlineKeyboardButton("✅ Confirm Delivery", callback_data=f"confirm_delivery_{escrow_id}")])
+        elif username == escrow_id:  # Seller
+            keyboard.append([InlineKeyboardButton("💸 Issue Refund", callback_data=f"refund_{escrow_id}")])
+
+    keyboard.append([InlineKeyboardButton("🔙 Back", callback_data="view_escrows")])
 
     await update.callback_query.edit_message_text(
         message,
@@ -167,17 +210,25 @@ async def show_active_escrows(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     message = "🔐 *Active Escrows:*\n\n"
     keyboard = []
-    
+
     for seller, escrow in ESCROWS.items():
         status_emoji = "🟡" if escrow["status"] == "pending" else "🟢" if escrow["status"] == "active" else "🔴"
         buyer_text = escrow.get("buyer", "Waiting for buyer")
         message += f"{status_emoji} *@{seller}*\n"
         message += f"💰 {escrow['amount']} - {escrow['item']}\n"
         message += f"👤 Buyer: {buyer_text}\n\n"
-        
+
         keyboard.append([InlineKeyboardButton(f"View @{seller}", callback_data=f"escrow_details_{seller}")])
 
-    keyboard.append([InlineKeyboardButton("🔙 Back to Menu", callback_data="menu")])
+    keyboard = [
+        [InlineKeyboardButton("➕ Create Escrow", callback_data="create_escrow"),
+         InlineKeyboardButton("🤝 Join Escrow", callback_data="join_escrow")],
+        [InlineKeyboardButton("🔍 View All Escrows", callback_data="view_escrows"),
+         InlineKeyboardButton("📊 My Trades", callback_data="my_trades")],
+        [InlineKeyboardButton("💳 Wallet Manager", callback_data="wallet_menu"),
+         InlineKeyboardButton("👤 Profile", callback_data="profile")],
+        [InlineKeyboardButton("📜 Rules", callback_data="rules")]
+    ]
     await update.callback_query.edit_message_text(
         message,
         parse_mode="Markdown",
@@ -220,7 +271,15 @@ async def show_user_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             keyboard.append([InlineKeyboardButton(f"View Details", callback_data=f"escrow_details_{seller}")])
 
-    keyboard.append([InlineKeyboardButton("🔙 Back to Menu", callback_data="menu")])
+    keyboard = [
+        [InlineKeyboardButton("➕ Create Escrow", callback_data="create_escrow"),
+         InlineKeyboardButton("🤝 Join Escrow", callback_data="join_escrow")],
+        [InlineKeyboardButton("🔍 View All Escrows", callback_data="view_escrows"),
+         InlineKeyboardButton("📊 My Trades", callback_data="my_trades")],
+        [InlineKeyboardButton("💳 Wallet Manager", callback_data="wallet_menu"),
+         InlineKeyboardButton("👤 Profile", callback_data="profile")],
+        [InlineKeyboardButton("📜 Rules", callback_data="rules")]
+    ]
     await update.callback_query.edit_message_text(
         message,
         parse_mode="Markdown",
@@ -249,7 +308,15 @@ async def show_user_profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message += f"⭐ Reputation: {stats['reputation']:.1f}/5.0\n"
     message += f"🆔 User ID: `{user_id}`"
 
-    keyboard = [[InlineKeyboardButton("🔙 Back to Menu", callback_data="menu")]]
+    keyboard = [
+        [InlineKeyboardButton("➕ Create Escrow", callback_data="create_escrow"),
+         InlineKeyboardButton("🤝 Join Escrow", callback_data="join_escrow")],
+        [InlineKeyboardButton("🔍 View All Escrows", callback_data="view_escrows"),
+         InlineKeyboardButton("📊 My Trades", callback_data="my_trades")],
+        [InlineKeyboardButton("💳 Wallet Manager", callback_data="wallet_menu"),
+         InlineKeyboardButton("👤 Profile", callback_data="profile")],
+        [InlineKeyboardButton("📜 Rules", callback_data="rules")]
+    ]
     await update.callback_query.edit_message_text(
         message,
         parse_mode="Markdown",
@@ -291,7 +358,15 @@ async def show_rules(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 📞 *Support:* {SUPPORT_USERNAME}"""
 
-    keyboard = [[InlineKeyboardButton("🔙 Back to Menu", callback_data="menu")]]
+    keyboard = [
+        [InlineKeyboardButton("➕ Create Escrow", callback_data="create_escrow"),
+         InlineKeyboardButton("🤝 Join Escrow", callback_data="join_escrow")],
+        [InlineKeyboardButton("🔍 View All Escrows", callback_data="view_escrows"),
+         InlineKeyboardButton("📊 My Trades", callback_data="my_trades")],
+        [InlineKeyboardButton("💳 Wallet Manager", callback_data="wallet_menu"),
+         InlineKeyboardButton("👤 Profile", callback_data="profile")],
+        [InlineKeyboardButton("📜 Rules", callback_data="rules")]
+    ]
     await update.callback_query.edit_message_text(
         rules_text,
         parse_mode="Markdown",
@@ -443,22 +518,22 @@ async def share_join_link(update: Update, context: ContextTypes.DEFAULT_TYPE, es
     if escrow_id not in ESCROWS:
         await update.callback_query.edit_message_text("❌ Escrow not found.")
         return
-    
+
     escrow = ESCROWS[escrow_id]
     bot_username = context.bot.username
     join_link = f"https://t.me/{bot_username}?start=join_{escrow_id}"
-    
+
     message = f"🔗 *Share This Join Link*\n\n"
     message += f"📦 Item: {escrow['item']}\n"
     message += f"💰 Amount: {escrow['amount']}\n\n"
     message += f"🔗 *Quick Join Link:*\n`{join_link}`\n\n"
     message += f"Copy and share this link with your buyer. They can click it to join the escrow instantly!"
-    
+
     keyboard = [
         [InlineKeyboardButton("📊 View Trade Details", callback_data=f"escrow_details_{escrow_id}")],
         [InlineKeyboardButton("🔙 Back to Menu", callback_data="menu")]
     ]
-    
+
     await update.callback_query.edit_message_text(
         message,
         parse_mode="Markdown",
@@ -531,3 +606,69 @@ async def confirm_join_escrow(update: Update, context: ContextTypes.DEFAULT_TYPE
             )
     except Exception as e:
         print(f"Error notifying seller: {e}")
+
+async def refund_escrow(update: Update, context: ContextTypes.DEFAULT_TYPE, escrow_id: str):
+    """Refund the buyer"""
+    if escrow_id not in ESCROWS:
+        await update.callback_query.edit_message_text("❌ Escrow not found.")
+        return
+
+    escrow = ESCROWS[escrow_id]
+    username = update.effective_user.username
+
+    # Check if the user is the seller
+    if username != escrow_id:
+        await update.callback_query.edit_message_text("❌ You are not the seller.")
+        return
+
+    # Check if the escrow is active
+    if escrow["status"] != "active":
+        await update.callback_query.edit_message_text("❌ This escrow is not active.")
+        return
+
+    # Check if the buyer has a refund wallet
+    if not escrow.get("buyer_refund_wallet"):
+        await update.callback_query.edit_message_text("❌ Buyer has not set a refund wallet.")
+        return
+
+    # Refund the buyer
+    # In a real-world scenario, you would use a payment gateway to refund the buyer
+    # For this example, we will just update the escrow status
+    ESCROWS[escrow_id]["status"] = "refunded"
+
+    message = f"💸 *Refund Issued*\n\n"
+    message += f"👤 Buyer: @{escrow.get('buyer', 'Unknown')}\n"
+    message += f"💰 Amount: {escrow['amount']}\n"
+    message += f"📦 Item: {escrow['item']}\n\n"
+    message += f"The buyer has been refunded."
+
+    keyboard = [[InlineKeyboardButton("🔙 Back to Menu", callback_data="menu")]]
+    await update.callback_query.edit_message_text(
+        message,
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+async def show_wallet_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Show wallet management menu"""
+    keyboard = [
+        [InlineKeyboardButton("Set Seller Wallet", callback_data="set_seller_wallet")],
+        [InlineKeyboardButton("Set Buyer Refund Wallet", callback_data="set_buyer_refund_wallet")],
+        [InlineKeyboardButton("🔙 Back to Menu", callback_data="menu")]
+    ]
+
+    await update.callback_query.edit_message_text(
+        "💳 *Wallet Manager*\n\nSet your wallet addresses for receiving payments and refunds.",
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+async def set_seller_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Set seller wallet address"""
+    await update.callback_query.edit_message_text("Please send your seller wallet address.")
+    context.user_data["awaiting_seller_wallet"] = True
+
+async def set_buyer_refund_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Set buyer refund wallet address"""
+    await update.callback_query.edit_message_text("Please send your buyer refund wallet address.")
+    context.user_data["awaiting_buyer_refund_wallet"] = True

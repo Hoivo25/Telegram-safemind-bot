@@ -1,6 +1,7 @@
 
 import aiohttp
 import asyncio
+import time
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes, CallbackQueryHandler
 from config import NOWPAYMENTS_API_KEY, NOWPAYMENTS_IPN_SECRET
@@ -215,6 +216,7 @@ async def check_payment_status(update: Update, context: ContextTypes.DEFAULT_TYP
         escrow_id = session["escrow_id"]
         ESCROWS[escrow_id]["payment_status"] = "paid"
         ESCROWS[escrow_id]["payment_id"] = payment_id
+        ESCROWS[escrow_id]["funded_at"] = time.time()  # For auto-release timing
         
         await query.edit_message_text(
             f"✅ *Payment Confirmed!*\n\n"

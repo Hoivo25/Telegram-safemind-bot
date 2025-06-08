@@ -12,6 +12,11 @@ async def handle_text_message(update, context):
     elif context.user_data.get("awaiting_join"):
         print("🤝 Handling join escrow input")
         await handle_join_input(update, context)
+    
+    elif context.user_data.get("awaiting_wallet"):
+        print("💳 Handling wallet address input")
+        from .wallet import handle_wallet_input
+        await handle_wallet_input(update, context)
 
     else:
         print("⚠️ User sent message but bot is not awaiting any input.")
