@@ -61,6 +61,10 @@ async def callback_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data.startswith("cancel_"):
         escrow_id = data.replace("cancel_", "")
         await cancel_escrow(update, context, escrow_id)
+    
+    elif data.startswith("confirm_cancel_"):
+        escrow_id = data.replace("confirm_cancel_", "")
+        await confirm_cancel_escrow(update, context, escrow_id)
 
     elif data.startswith("dispute_"):
         escrow_id = data.replace("dispute_", "")
@@ -199,7 +203,14 @@ async def show_user_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
         message += f"📦 {escrow['item']}\n"
         message += f"👤 Partner: @{escrow.get('buyer', 'None') if role == 'Seller' else seller}\n\n"
 
-        keyboard.append([InlineKeyboardButton(f"View Details", callback_data=f"escrow_details_{seller}")])
+        # Add action buttons based on role and status
+        if role == "Seller" and escrow["status"] == "pending":
+            keyboard.append([
+                InlineKeyboardButton(f"View Details", callback_data=f"escrow_details_{seller}"),
+                InlineKeyboardButton(f"❌ Cancel", callback_data=f"cancel_{seller}")
+            ])
+        else:
+            keyboard.append([InlineKeyboardButton(f"View Details", callback_data=f"escrow_details_{seller}")])
 
     keyboard.append([InlineKeyboardButton("🔙 Back to Menu", callback_data="menu")])
     await update.callback_query.edit_message_text(
@@ -342,6 +353,31 @@ async def cancel_escrow(update: Update, context: ContextTypes.DEFAULT_TYPE, escr
         await update.callback_query.edit_message_text("❌ Can only cancel pending escrows.")
         return
 
+    # Show confirmation
+    message = f"⚠️ *Confirm Cancellation*\n\n"
+    message += f"📦 Item: {escrow['item']}\n"
+    message += f"💰 Amount: {escrow['amount']}\n\n"
+    message += f"Are you sure you want to cancel this escrow?"
+
+    keyboard = [
+        [InlineKeyboardButton("✅ Yes, Cancel", callback_data=f"confirm_cancel_{escrow_id}")],
+        [InlineKeyboardButton("❌ No, Keep It", callback_data=f"escrow_details_{escrow_id}")]
+    ]
+
+    await update.callback_query.edit_message_text(
+        message,
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+async def confirm_cancel_escrow(update: Update, context: ContextTypes.DEFAULT_TYPE, escrow_id: str):
+    if escrow_id not in ESCROWS:
+        await update.callback_query.edit_message_text("❌ Escrow not found.")
+        return
+
+    username = update.effective_user.username
+    escrow = ESCROWS[escrow_id]
+
     # Update stats
     if username not in USER_STATS:
         USER_STATS[username] = {"trades_completed": 0, "trades_cancelled": 0, "total_volume": 0, "reputation": 5.0}
@@ -350,8 +386,10 @@ async def cancel_escrow(update: Update, context: ContextTypes.DEFAULT_TYPE, escr
     # Remove escrow
     del ESCROWS[escrow_id]
 
-    message = f"❌ *Escrow Cancelled*\n\n"
-    message += f"The escrow for {escrow['item']} ({escrow['amount']}) has been cancelled."
+    message = f"❌ *Escrow Cancelled Successfully*\n\n"
+    message += f"📦 Item: {escrow['item']}\n"
+    message += f"💰 Amount: {escrow['amount']}\n\n"
+    message += f"The escrow has been cancelled and removed from active trades."
 
     keyboard = [[InlineKeyboardButton("🔙 Back to Menu", callback_data="menu")]]
     await update.callback_query.edit_message_text(
