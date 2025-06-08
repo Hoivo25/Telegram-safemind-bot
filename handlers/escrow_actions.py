@@ -316,5 +316,9 @@ def register_handlers(app):
     app.add_handler(CallbackQueryHandler(initiate_refund, pattern="^refund_"))
     app.add_handler(CallbackQueryHandler(process_refund, pattern="^process_refund_"))
     
-    # Schedule auto-release check every hour
-    app.job_queue.run_repeating(check_auto_release, interval=3600, first=10)
+    # Schedule auto-release check every hour (if job queue is available)
+    if app.job_queue:
+        app.job_queue.run_repeating(check_auto_release, interval=3600, first=10)
+        print("✅ Auto-release scheduler started")
+    else:
+        print("⚠️ Job queue not available - auto-release disabled")
