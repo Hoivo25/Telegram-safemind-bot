@@ -4,3 +4,5 @@ Quart==0.19.4
 requests==2.31.0
 nest_asyncio
 aiohttp
+quart
+telegram

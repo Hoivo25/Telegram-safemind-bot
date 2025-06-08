@@ -7,6 +7,7 @@ SUPPORT_USERNAME = "@Rocketmoneyx"
 # Webhook settings (keep this off for Replit)
 WEBHOOK_MODE = False
 WEBHOOK_URL = ""
+PORT = 5000
 
 # Admin wallet address (used to receive escrow fees)
 ADMIN_WALLET = "TL4aFdzFQ3WTYKYZxF1JjSvawdhsFisgMy"  # Update if needed
