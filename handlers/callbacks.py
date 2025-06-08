@@ -62,6 +62,14 @@ async def callback_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
         escrow_id = data.replace("cancel_", "")
         await cancel_escrow(update, context, escrow_id)
     
+    elif data.startswith("share_link_"):
+        escrow_id = data.replace("share_link_", "")
+        await share_join_link(update, context, escrow_id)
+    
+    elif data.startswith("confirm_join_"):
+        escrow_id = data.replace("confirm_join_", "")
+        await confirm_join_escrow(update, context, escrow_id)
+    
     elif data.startswith("confirm_cancel_"):
         escrow_id = data.replace("confirm_cancel_", "")
         await confirm_cancel_escrow(update, context, escrow_id)
@@ -427,3 +435,99 @@ async def start_dispute(update: Update, context: ContextTypes.DEFAULT_TYPE, escr
         parse_mode="Markdown",
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
+
+
+async def share_join_link(update: Update, context: ContextTypes.DEFAULT_TYPE, escrow_id: str):
+    """Share the join link for an escrow"""
+    if escrow_id not in ESCROWS:
+        await update.callback_query.edit_message_text("❌ Escrow not found.")
+        return
+    
+    escrow = ESCROWS[escrow_id]
+    bot_username = context.bot.username
+    join_link = f"https://t.me/{bot_username}?start=join_{escrow_id}"
+    
+    message = f"🔗 *Share This Join Link*\n\n"
+    message += f"📦 Item: {escrow['item']}\n"
+    message += f"💰 Amount: {escrow['amount']}\n\n"
+    message += f"🔗 *Quick Join Link:*\n`{join_link}`\n\n"
+    message += f"Copy and share this link with your buyer. They can click it to join the escrow instantly!"
+    
+    keyboard = [
+        [InlineKeyboardButton("📊 View Trade Details", callback_data=f"escrow_details_{escrow_id}")],
+        [InlineKeyboardButton("🔙 Back to Menu", callback_data="menu")]
+    ]
+    
+    await update.callback_query.edit_message_text(
+        message,
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+async def confirm_join_escrow(update: Update, context: ContextTypes.DEFAULT_TYPE, escrow_id: str):
+    """Confirm joining an escrow via deep link"""
+    if escrow_id not in ESCROWS:
+        await update.callback_query.edit_message_text("❌ Escrow not found.")
+        return
+
+    escrow = ESCROWS[escrow_id]
+    buyer_username = update.effective_user.username
+    buyer_id = update.effective_user.id
+
+    if not buyer_username:
+        await update.callback_query.edit_message_text("❌ You need to set a username in Telegram to use this bot.")
+        return
+
+    if escrow["status"] != "pending":
+        await update.callback_query.edit_message_text("❌ This escrow is no longer available to join.")
+        return
+
+    if escrow.get("buyer"):
+        await update.callback_query.edit_message_text("❌ This escrow already has a buyer.")
+        return
+
+    # Update escrow with buyer info
+    ESCROWS[escrow_id]["buyer"] = buyer_username
+    ESCROWS[escrow_id]["buyer_id"] = buyer_id
+    ESCROWS[escrow_id]["status"] = "active"
+
+    # Notify buyer
+    success_message = f"✅ *Successfully Joined Escrow!*\n\n"
+    success_message += f"👤 Seller: @{escrow_id}\n"
+    success_message += f"👤 Buyer: @{buyer_username}\n"
+    success_message += f"💰 Amount: {escrow['amount']}\n"
+    success_message += f"📦 Item: {escrow['item']}\n"
+    success_message += f"📊 Status: Active\n\n"
+    success_message += f"The trade is now active! Proceed with payment when ready."
+
+    keyboard = [
+        [InlineKeyboardButton("💰 Pay with Crypto", callback_data=f"pay_crypto_{escrow_id}")],
+        [InlineKeyboardButton("📊 View Trade Details", callback_data=f"escrow_details_{escrow_id}")],
+        [InlineKeyboardButton("🔙 Back to Menu", callback_data="menu")]
+    ]
+
+    await update.callback_query.edit_message_text(
+        success_message,
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+    # Notify seller
+    try:
+        seller_chat_id = escrow.get("seller_id")
+        if seller_chat_id:
+            await context.bot.send_message(
+                chat_id=seller_chat_id,
+                text=(
+                    f"✅ *Buyer Joined Your Escrow!*\n\n"
+                    f"👤 Buyer: @{buyer_username}\n"
+                    f"💰 Amount: {escrow['amount']}\n"
+                    f"📦 Item: {escrow['item']}\n"
+                    f"🟢 Trade is now *active*.\n\n"
+                    f"Wait for the buyer to complete payment."
+                ),
+                parse_mode="Markdown"
+            )
+    except Exception as e:
+        print(f"Error notifying seller: {e}")

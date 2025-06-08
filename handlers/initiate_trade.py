@@ -47,16 +47,22 @@ async def handle_escrow_details(update: Update, context: ContextTypes.DEFAULT_TY
             "payment_status": "unpaid"
         }
 
+        # Generate join link
+        bot_username = context.bot.username
+        join_link = f"https://t.me/{bot_username}?start=join_{seller_username}"
+        
         success_message = f"✅ *Escrow Created Successfully!*\n\n"
         success_message += f"👤 Seller: @{seller_username}\n"
         success_message += f"💰 Amount: ${amount}\n"
         success_message += f"📦 Item: {item}\n"
         success_message += f"👤 Expected Buyer: @{buyer_username}\n"
         success_message += f"📊 Status: Pending\n\n"
-        success_message += f"Share your username (@{seller_username}) with the buyer so they can join!"
+        success_message += f"🔗 *Quick Join Link:*\n`{join_link}`\n\n"
+        success_message += f"Share this link with the buyer to join instantly!"
 
         keyboard = [
             [InlineKeyboardButton("📊 View My Trades", callback_data="my_trades")],
+            [InlineKeyboardButton("🔗 Share Join Link", callback_data=f"share_link_{seller_username}")],
             [InlineKeyboardButton("🔙 Back to Menu", callback_data="menu")]
         ]
 
