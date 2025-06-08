@@ -16,5 +16,5 @@ FLAT_FEE = 4            # $4 fee for transactions under $100
 PERCENTAGE_FEE = 0.04   # 4% fee for transactions over $100
 
 # NOWPayments.io configuration
-NOWPAYMENTS_API_KEY = "YOUR_NOWPAYMENTS_API_KEY"  # Get from https://nowpayments.io
-NOWPAYMENTS_IPN_SECRET = "YOUR_IPN_SECRET_KEY"    # Set in NOWPayments dashboard
+NOWPAYMENTS_API_KEY = "test_api_key_placeholder"  # Get from https://nowpayments.io
+NOWPAYMENTS_IPN_SECRET = "test_secret_placeholder"    # Set in NOWPayments dashboard

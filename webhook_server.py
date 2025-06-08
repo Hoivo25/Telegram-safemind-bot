@@ -1,8 +1,13 @@
 
-from flask import Flask, request, jsonify
+try:
+    from flask import Flask, request, jsonify
+except ImportError:
+    print("⚠️ Flask not installed. Webhook server disabled.")
+    Flask = None
+
 import json
 import threading
-from handlers.payments import nowpayments
+from config import NOWPAYMENTS_IPN_SECRET
 from utils import PAYMENT_SESSIONS, ESCROWS
 
 app = Flask(__name__)
@@ -20,7 +25,7 @@ def nowpayments_webhook():
         payload = request.get_data(as_text=True)
         
         # Verify signature
-        if not nowpayments.verify_ipn_signature(payload, signature):
+        if not verify_ipn_signature(payload, signature):
             return jsonify({'error': 'Invalid signature'}), 403
         
         # Parse data
@@ -48,9 +53,29 @@ def nowpayments_webhook():
         print(f"Webhook error: {e}")
         return jsonify({'error': 'Internal error'}), 500
 
+def verify_ipn_signature(payload, signature):
+    """Verify NOWPayments IPN signature"""
+    import hmac
+    import hashlib
+    
+    expected_sig = hmac.new(
+        NOWPAYMENTS_IPN_SECRET.encode(),
+        payload.encode(),
+        hashlib.sha512
+    ).hexdigest()
+    
+    return hmac.compare_digest(signature, expected_sig)
+
 def run_webhook_server():
     """Run webhook server in a separate thread"""
-    app.run(host='0.0.0.0', port=5000, debug=False)
+    if Flask is None:
+        print("⚠️ Flask not available. Webhook server disabled.")
+        return
+    
+    try:
+        app.run(host='0.0.0.0', port=5000, debug=False)
+    except Exception as e:
+        print(f"⚠️ Webhook server error: {e}")
 
 if __name__ == '__main__':
     run_webhook_server()

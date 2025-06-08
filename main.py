@@ -12,9 +12,12 @@ nest_asyncio.apply()
 
 async def main():
     # Start webhook server in background thread
-    webhook_thread = threading.Thread(target=run_webhook_server, daemon=True)
-    webhook_thread.start()
-    print("🌐 Webhook server started on port 5000")
+    try:
+        webhook_thread = threading.Thread(target=run_webhook_server, daemon=True)
+        webhook_thread.start()
+        print("🌐 Webhook server started on port 5000")
+    except Exception as e:
+        print(f"⚠️ Webhook server could not start: {e}")
     
     # Configure request with longer timeout
     request = HTTPXRequest(
