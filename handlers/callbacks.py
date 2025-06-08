@@ -153,21 +153,117 @@ async def show_rules(update: Update, context: ContextTypes.DEFAULT_TYPE):
         message,
         reply_markup=InlineKeyboardMarkup(keyboard),
         parse_mode="Markdown"
-    )pdate, context)
+    )
 
-    elif data == "profile":
-        await show_user_profile(update, context)
+async def complete_trade(update: Update, context: ContextTypes.DEFAULT_TYPE, escrow_id: str):
+    if escrow_id not in ESCROWS:
+        await update.callback_query.edit_message_text("❌ Escrow not found.")
+        return
 
-    elif data == "rules":
-        await show_rules(update, context)
+    escrow = ESCROWS[escrow_id]
+    username = update.effective_user.username
 
-    elif data == "menu":
-        from .start import show_main_menu
-        await show_main_menu(update, context)
+    # Only participants can complete
+    if username != escrow_id and username != escrow.get("buyer"):
+        await update.callback_query.edit_message_text("❌ You are not part of this trade.")
+        return
 
-    elif data.startswith("complete_"):
-        escrow_id = data.replace("complete_", "")
-        await complete_trade(update, context, escrow_id)
+    # Update escrow status
+    ESCROWS[escrow_id]["status"] = "completed"
+
+    # Update user stats
+    seller_stats = USER_STATS.get(escrow_id, {"trades_completed": 0, "trades_cancelled": 0, "total_volume": 0, "reputation": 5.0})
+    buyer_stats = USER_STATS.get(escrow["buyer"], {"trades_completed": 0, "trades_cancelled": 0, "total_volume": 0, "reputation": 5.0})
+
+    amount = int(escrow["amount"].replace("$", ""))
+    seller_stats["trades_completed"] += 1
+    seller_stats["total_volume"] += amount
+    buyer_stats["trades_completed"] += 1
+
+    USER_STATS[escrow_id] = seller_stats
+    USER_STATS[escrow["buyer"]] = buyer_stats
+
+    # Remove from active escrows
+    del ESCROWS[escrow_id]
+
+    message = f"✅ *Trade Completed Successfully!*\n\n"
+    message += f"👤 Seller: @{escrow_id}\n"
+    message += f"👤 Buyer: @{escrow['buyer']}\n"
+    message += f"💰 Amount: {escrow['amount']}\n"
+    message += f"📦 Item: {escrow['item']}\n\n"
+    message += f"Thank you for using our escrow service!"
+
+    keyboard = [[InlineKeyboardButton("🔙 Back to Menu", callback_data="menu")]]
+    await update.callback_query.edit_message_text(
+        message,
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+async def cancel_escrow(update: Update, context: ContextTypes.DEFAULT_TYPE, escrow_id: str):
+    if escrow_id not in ESCROWS:
+        await update.callback_query.edit_message_text("❌ Escrow not found.")
+        return
+
+    username = update.effective_user.username
+
+    # Only seller can cancel pending escrows
+    if username != escrow_id:
+        await update.callback_query.edit_message_text("❌ Only the seller can cancel this escrow.")
+        return
+
+    escrow = ESCROWS[escrow_id]
+    if escrow["status"] != "pending":
+        await update.callback_query.edit_message_text("❌ Can only cancel pending escrows.")
+        return
+
+    # Update stats
+    if username not in USER_STATS:
+        USER_STATS[username] = {"trades_completed": 0, "trades_cancelled": 0, "total_volume": 0, "reputation": 5.0}
+    USER_STATS[username]["trades_cancelled"] += 1
+
+    # Remove escrow
+    del ESCROWS[escrow_id]
+
+    message = f"❌ *Escrow Cancelled*\n\n"
+    message += f"The escrow for {escrow['item']} ({escrow['amount']}) has been cancelled."
+
+    keyboard = [[InlineKeyboardButton("🔙 Back to Menu", callback_data="menu")]]
+    await update.callback_query.edit_message_text(
+        message,
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+async def start_dispute(update: Update, context: ContextTypes.DEFAULT_TYPE, escrow_id: str):
+    if escrow_id not in ESCROWS:
+        await update.callback_query.edit_message_text("❌ Escrow not found.")
+        return
+
+    escrow = ESCROWS[escrow_id]
+    username = update.effective_user.username
+
+    # Only participants can start disputes
+    if username != escrow_id and username != escrow.get("buyer"):
+        await update.callback_query.edit_message_text("❌ You are not part of this trade.")
+        return
+
+    # Update status
+    ESCROWS[escrow_id]["status"] = "disputed"
+
+    message = f"⚠️ *Dispute Started*\n\n"
+    message += f"👤 Initiated by: @{username}\n"
+    message += f"📦 Item: {escrow['item']}\n"
+    message += f"💰 Amount: {escrow['amount']}\n\n"
+    message += f"Admin {SUPPORT_USERNAME} has been notified and will review this case.\n\n"
+    message += f"Please provide detailed information about the issue."
+
+    keyboard = [[InlineKeyboardButton("🔙 Back to Menu", callback_data="menu")]]
+    await update.callback_query.edit_message_text(
+        message,
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
 
     elif data.startswith("cancel_"):
         escrow_id = data.replace("cancel_", "")
