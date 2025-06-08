@@ -1,5 +1,5 @@
 # Telegram bot token from BotFather
-BOT_TOKEN = "7677765104:AAHc5-_MolTUpKxPAQYxWRJYVK-pDHQ2nFM"
+BOT_TOKEN = "7225617031:AAFPb0BtYGA2Ml2ff5xj5q_oyx2a0_P_c74"
 
 # Support contact username (used in the /start menu)
 SUPPORT_USERNAME = "@Rocketmoneyx"
@@ -16,5 +16,5 @@ FLAT_FEE = 4            # $4 fee for transactions under $100
 PERCENTAGE_FEE = 0.04   # 4% fee for transactions over $100
 
 # NOWPayments.io configuration
-NOWPAYMENTS_API_KEY = "test_api_key_placeholder"  # Get from https://nowpayments.io
-NOWPAYMENTS_IPN_SECRET = "test_secret_placeholder"    # Set in NOWPayments dashboard
+NOWPAYMENTS_API_KEY = "H47NQSJ-8S0MS2X-KFEMY0M-1AZATMN"  # Get from https://nowpayments.io
+NOWPAYMENTS_IPN_SECRET = "2x1BPklTxLzdU+udvzjak0NVSYSZTLlU"    # Set in NOWPayments dashboard
