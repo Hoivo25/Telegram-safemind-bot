@@ -1,42 +1,29 @@
-
-import asyncio
+import os
 import nest_asyncio
-import threading
 from telegram.ext import Application
-from telegram.request import HTTPXRequest
-from config import BOT_TOKEN
-from handlers import register_all_handlers
-from webhook_server import run_webhook_server
+from handlers import register_all_handlers  # Your custom handler setup
 
-# Allow nested async loops (required in Replit)
 nest_asyncio.apply()
 
-def main():
-    # Start webhook server in background thread
-    try:
-        webhook_thread = threading.Thread(target=run_webhook_server, daemon=True)
-        webhook_thread.start()
-        print("🌐 Webhook server started on port 5000")
-    except Exception as e:
-        print(f"⚠️ Webhook server could not start: {e}")
-    
-    # Configure request with longer timeout
-    request = HTTPXRequest(
-        connection_pool_size=8,
-        read_timeout=30,
-        write_timeout=30,
-        connect_timeout=30,
-        pool_timeout=30
-    )
-    
-    application = Application.builder().token(BOT_TOKEN).request(request).build()
-    register_all_handlers(application)
+# Get the bot token and Render URL from environment variables
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+APP_URL = os.getenv("RENDER_EXTERNAL_URL")  # Automatically set by Render
+PORT = int(os.environ.get('PORT', 5000))
 
-    print("✅ Bot is running...")
-    try:
-        application.run_polling(drop_pending_updates=True)
-    except Exception as e:
-        print(f"❌ Bot error: {e}")
+# Ensure required environment variables exist
+if not BOT_TOKEN or not APP_URL:
+    raise Exception("Missing BOT_TOKEN or RENDER_EXTERNAL_URL environment variables")
 
-if __name__ == "__main__":
-    main()
+# Initialize the Telegram bot application
+application = Application.builder().token(BOT_TOKEN).build()
+
+# Register all command and callback handlers
+register_all_handlers(application)
+
+# Start webhook server
+application.run_webhook(
+    listen="0.0.0.0",
+    port=PORT,
+    webhook_url=f"{APP_URL}/webhook/{BOT_TOKEN}",
+    allowed_updates=application.resolve_used_update_types()
+)
