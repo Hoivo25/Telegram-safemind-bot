@@ -265,6 +265,10 @@ async def start_dispute(update: Update, context: ContextTypes.DEFAULT_TYPE, escr
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
+    elif data.startswith("complete_"):
+        escrow_id = data.replace("complete_", "")
+        await complete_trade(update, context, escrow_id)
+
     elif data.startswith("cancel_"):
         escrow_id = data.replace("cancel_", "")
         await cancel_escrow(update, context, escrow_id)
