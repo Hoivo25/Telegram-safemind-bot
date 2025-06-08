@@ -1,3 +1,4 @@
+
 import asyncio
 import nest_asyncio
 import threading
@@ -10,7 +11,7 @@ from webhook_server import run_webhook_server
 # Allow nested async loops (required in Replit)
 nest_asyncio.apply()
 
-async def main():
+def main():
     # Start webhook server in background thread
     try:
         webhook_thread = threading.Thread(target=run_webhook_server, daemon=True)
@@ -33,9 +34,9 @@ async def main():
 
     print("✅ Bot is running...")
     try:
-        await application.run_polling(drop_pending_updates=True)
+        application.run_polling(drop_pending_updates=True)
     except Exception as e:
         print(f"❌ Bot error: {e}")
 
-# Run the bot (Replit compatible)
-asyncio.get_event_loop().run_until_complete(main())
+if __name__ == "__main__":
+    main()
