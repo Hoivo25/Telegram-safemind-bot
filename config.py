@@ -2,7 +2,7 @@
 BOT_TOKEN = "7225617031:AAFPb0BtYGA2Ml2ff5xj5q_oyx2a0_P_c74"
 
 # Support contact username (used in the /start menu)
-SUPPORT_USERNAME = "@Rocketmoneyx"
+SUPPORT_USERNAME = "@Safetypurposes"
 
 # Webhook settings (keep this off for Replit)
 WEBHOOK_MODE = False
