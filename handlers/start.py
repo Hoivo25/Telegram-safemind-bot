@@ -13,7 +13,25 @@ async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    welcome_text = "🔐 *Welcome to Escrow Bot!*\n\nSecure trading made simple. Choose an option below:"
+    welcome_text = """🔐 *Welcome to Escrow Bot!*
+
+🌟 *Your Trusted Trading Partner*
+We believe in complete transparency and security for every trade.
+
+🛡️ *What Makes Us Different:*
+• All trades are secured through blockchain escrow
+• Zero hidden fees - you see exactly what you pay
+• Open-source security protocols
+• 24/7 automated dispute resolution
+• Real-time trade status tracking
+
+💎 *Transparency Promise:*
+• Fee Structure: Clearly displayed before each trade
+• Trade History: Full audit trail for all transactions  
+• Security: Multi-signature wallet protection
+• Support: Direct access to human moderators
+
+🚀 *Ready to trade safely?* Choose an option below:"""
 
     if update.message:
         await update.message.reply_text(welcome_text, reply_markup=reply_markup, parse_mode="Markdown")
