@@ -8,6 +8,7 @@ from telegram.ext import Application
 from config import BOT_TOKEN, WEBHOOK_MODE, WEBHOOK_URL, PORT
 from handlers import register_all_handlers
 
+# Apply nest_asyncio patch
 nest_asyncio.apply()
 
 # Configure logging
@@ -62,6 +63,16 @@ async def main():
 
 if __name__ == "__main__":
     try:
-        asyncio.run(main())
+        # Get or create event loop
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+        
+        # Run the main function
+        loop.run_until_complete(main())
     except (KeyboardInterrupt, SystemExit):
         logger.info("🛑 Bot stopped.")
+    except Exception as e:
+        logger.error(f"❌ Bot error: {e}")
