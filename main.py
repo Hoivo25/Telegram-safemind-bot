@@ -38,6 +38,35 @@ async def main():
                 await application.update_queue.put(data)
                 return "OK"
             
+            @webhook_app.route("/webhook/stripe", methods=["POST"])
+            async def stripe_webhook():
+                """Handle Stripe webhook events"""
+                import stripe
+                from config import STRIPE_WEBHOOK_SECRET
+                from utils import ESCROWS
+                import time
+                
+                payload = await request.get_data(as_text=True)
+                sig_header = request.headers.get('Stripe-Signature')
+                
+                try:
+                    event = stripe.Webhook.construct_event(
+                        payload, sig_header, STRIPE_WEBHOOK_SECRET
+                    )
+                except:
+                    return "Invalid signature", 400
+                
+                # Handle successful payment
+                if event['type'] == 'checkout.session.completed':
+                    session = event['data']['object']
+                    escrow_id = session['metadata'].get('escrow_id')
+                    if escrow_id and escrow_id in ESCROWS:
+                        ESCROWS[escrow_id]["payment_status"] = "paid"
+                        ESCROWS[escrow_id]["stripe_session_id"] = session['id']
+                        ESCROWS[escrow_id]["funded_at"] = time.time()
+                
+                return "OK"
+            
             # Set webhook
             await application.bot.set_webhook(f"{WEBHOOK_URL}/webhook")
             

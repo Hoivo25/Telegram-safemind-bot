@@ -19,3 +19,8 @@ PERCENTAGE_FEE = 0.04   # 4% fee for transactions over $100
 # NOWPayments.io configuration
 NOWPAYMENTS_API_KEY = "H47NQSJ-8S0MS2X-KFEMY0M-1AZATMN"  # Get from https://nowpayments.io
 NOWPAYMENTS_IPN_SECRET = "2x1BPklTxLzdU+udvzjak0NVSYSZTLlU"    # Set in NOWPayments dashboard
+
+# Stripe configuration
+STRIPE_SECRET_KEY = "sk_test_..."  # Add your Stripe secret key
+STRIPE_PUBLISHABLE_KEY = "pk_test_..."  # Add your Stripe publishable key
+STRIPE_WEBHOOK_SECRET = "whsec_..."  # Add your Stripe webhook secret
